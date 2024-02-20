@@ -11,6 +11,12 @@ from utils import *
 
 EOS = 1e-10
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+else :
+    device = torch.device("cpu")
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -45,7 +51,7 @@ def train_discriminator(cl_model, discriminator, optimizer_disc, features, str_e
 
     adj_1, adj_2, weights_lp, weights_hp = discriminator(torch.cat((features, str_encodings), 1), edges)
     rand_np = generate_random_node_pairs(features.shape[0], edges.shape[1])
-    psu_label = torch.ones(edges.shape[1]).cuda()
+    psu_label = torch.ones(edges.shape[1]).to(device)
 
     embedding = cl_model.get_embedding(features, adj_1, adj_2)
     edge_emb_sim = F.cosine_similarity(embedding[edges[0]], embedding[edges[1]])
@@ -78,16 +84,16 @@ def main(args):
         setup_seed(trial)
 
         cl_model = GCL(nlayers=args.nlayers_enc, nlayers_proj=args.nlayers_proj, in_dim=nfeats, emb_dim=args.emb_dim,
-                    proj_dim=args.proj_dim, dropout=args.dropout, sparse=args.sparse, batch_size=args.cl_batch_size).cuda()
+                    proj_dim=args.proj_dim, dropout=args.dropout, sparse=args.sparse, batch_size=args.cl_batch_size).to(device)
         cl_model.set_mask_knn(features.cpu(), k=args.k, dataset=args.dataset)
-        discriminator = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).cuda()
+        discriminator = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).to(device)
 
         optimizer_cl = torch.optim.Adam(cl_model.parameters(), lr=args.lr_gcl, weight_decay=args.w_decay)
         optimizer_discriminator = torch.optim.Adam(discriminator.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
 
-        features = features.cuda()
-        str_encodings = str_encodings.cuda()
-        edges = edges.cuda()
+        features = features.to(device)
+        str_encodings = str_encodings.to(device)
+        edges = edges.to(device)
 
         best_acc_val = 0
         best_acc_test = 0
