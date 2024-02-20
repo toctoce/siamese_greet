@@ -100,6 +100,7 @@ def main(args):
         discriminator0 = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).cuda()
         discriminator1 = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).cuda()
 
+
         optimizer_cl = torch.optim.Adam(cl_model.parameters(), lr=args.lr_gcl, weight_decay=args.w_decay)
         optimizer_discriminator0 = torch.optim.Adam(discriminator0.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
         optimizer_discriminator1 = torch.optim.Adam(discriminator1.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
