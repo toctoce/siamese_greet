@@ -74,7 +74,7 @@ def main(args):
     results = []
 
     for trial in range(args.ntrials):
-
+        print(">>>>>> trial: ", trial, " <<<<<<")
         setup_seed(trial)
 
         cl_model = GCL(nlayers=args.nlayers_enc, nlayers_proj=args.nlayers_proj, in_dim=nfeats, emb_dim=args.emb_dim,
