@@ -101,8 +101,8 @@ class GCL(nn.Module):
 
 
     def infonce(self, anchor, sample, pos_mask, neg_mask, tau):
-        pos_mask = pos_mask.to(device)
-        neg_mask = neg_mask.to(device)
+        pos_mask = pos_mask.float().to(device)
+        neg_mask = neg_mask.float().to(device)
         sim = self.similarity(anchor, sample) / tau
         exp_sim = torch.exp(sim) * neg_mask
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
