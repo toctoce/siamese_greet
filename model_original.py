@@ -127,10 +127,7 @@ class Edge_Discriminator(nn.Module):
         super(Edge_Discriminator, self).__init__()
 
         self.embedding_layers = nn.ModuleList()
-        # self.embedding_layers.append(nn.Linear(input_dim, hidden_dim))
-        a=nn.Linear(input_dim, hidden_dim)
-        b=SGC(2, input_dim, hidden_dim, 0.5, 0)
-        self.embedding_layers.append(b)
+        self.embedding_layers.append(nn.Linear(input_dim, hidden_dim))
         self.edge_mlp = nn.Linear(hidden_dim * 2, 1)
 
         self.temperature = temperature
@@ -140,11 +137,9 @@ class Edge_Discriminator(nn.Module):
         self.alpha = alpha
 
 
-    def get_node_embedding(self, features, edges):
-        adj = torch.zeros(self.nnodes, self.nnodes).to(device)
-        adj[edges[0], edges[1]] = 1
+    def get_node_embedding(self, h):
         for layer in self.embedding_layers:
-            h = layer(features, adj)
+            h = layer(h)
             h = F.relu(h)
         return h
 
@@ -164,8 +159,8 @@ class Edge_Discriminator(nn.Module):
 
 
     def weight_forward(self, features, edges):
-        embeddings = self.get_node_embedding(features, edges) # 여기서 weight 필요함
-        edges_weights_raw = self.get_edge_weight(embeddings, edges) # 여기서 embedding 필요함
+        embeddings = self.get_node_embedding(features)
+        edges_weights_raw = self.get_edge_weight(embeddings, edges)
         weights_lp = self.gumbel_sampling(edges_weights_raw)
         weights_hp = 1 - weights_lp
         return weights_lp, weights_hp

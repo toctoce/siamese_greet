@@ -33,7 +33,7 @@ def train_cl(cl_model, discriminator, optimizer_cl, features, str_encodings, edg
     cl_model.train()
     discriminator.eval()
 
-    adj_1, adj_2, weights_lp, _ = discriminator(torch.cat((features, str_encodings), 1), edges)
+    adj_1, adj_2, weights_lp, _ = discriminator(features, edges)
     features_1, adj_1, features_2, adj_2 = augmentation(features, adj_1, features, adj_2, args, cl_model.training)
     cl_loss = cl_model(features_1, adj_1, features_2, adj_2)
 
@@ -49,7 +49,7 @@ def train_discriminator(cl_model, discriminator, optimizer_disc, features, str_e
     cl_model.eval()
     discriminator.train()
 
-    adj_1, adj_2, weights_lp, weights_hp = discriminator(torch.cat((features, str_encodings), 1), edges)
+    adj_1, adj_2, weights_lp, weights_hp = discriminator(features, edges)
     rand_np = generate_random_node_pairs(features.shape[0], edges.shape[1])
     psu_label = torch.ones(edges.shape[1]).to(device)
 
@@ -87,7 +87,7 @@ def main(args):
         cl_model = GCL(nlayers=args.nlayers_enc, nlayers_proj=args.nlayers_proj, in_dim=nfeats, emb_dim=args.emb_dim,
                     proj_dim=args.proj_dim, dropout=args.dropout, sparse=args.sparse, batch_size=args.cl_batch_size).to(device)
         cl_model.set_mask_knn(features.cpu(), k=args.k, dataset=args.dataset)
-        discriminator = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).to(device)
+        discriminator = Edge_Discriminator(nnodes, nfeats, args.alpha, args.sparse).to(device)
 
         optimizer_cl = torch.optim.Adam(cl_model.parameters(), lr=args.lr_gcl, weight_decay=args.w_decay)
         optimizer_discriminator = torch.optim.Adam(discriminator.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
@@ -110,7 +110,7 @@ def main(args):
             if epoch % args.eval_freq == 0:
                 cl_model.eval()
                 discriminator.eval()
-                adj_1, adj_2, _, _ = discriminator(torch.cat((features, str_encodings), 1), edges)
+                adj_1, adj_2, _, _ = discriminator(features, edges)
                 embedding = cl_model.get_embedding(features, adj_1, adj_2)
                 cur_split = 0 if (train_mask.shape[1]==1) else (trial % train_mask.shape[1])
                 acc_test, acc_val = eval_test_mode(embedding, labels, train_mask[:, cur_split],
