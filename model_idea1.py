@@ -178,10 +178,10 @@ class Edge_Discriminator(nn.Module):
             # 값이 전체적으로 작아짐.
             adj_hp = normalize_adj(adj_hp, 'sym', self.sparse)
 
-            mask = torch.zeros(adj_lp.shape).to(device)
-            mask[edges[0], edges[1]] = 1.
-            mask.requires_grad = False
-            adj_hp = torch.eye(self.nnodes).to(device) - adj_hp * mask * self.alpha
+            # mask = torch.zeros(adj_lp.shape).to(device)
+            # mask[edges[0], edges[1]] = 1.
+            # mask.requires_grad = False
+            # adj_hp = torch.eye(self.nnodes).to(device) - adj_hp * mask * self.alpha
         else:
             adj_lp = dgl.graph((edges[0], edges[1]), num_nodes=self.nnodes, device=device)
             adj_lp = dgl.add_self_loop(adj_lp)
@@ -201,6 +201,7 @@ class Edge_Discriminator(nn.Module):
 
     def forward(self, features, edges):
         weights_lp, weights_hp = self.weight_forward(features, edges)
+
         adj_lp, adj_hp = self.weight_to_adj(edges, weights_lp, weights_hp)
         return adj_lp, adj_hp, weights_lp, weights_hp
 
