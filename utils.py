@@ -11,10 +11,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import normalize
 
-from main import device
-
 EOS = 1e-10
-
+from main import device
 
 def split_batch(init_list, batch_size):
     groups = zip(*(iter(init_list),) * batch_size)
@@ -27,10 +25,11 @@ def split_batch(init_list, batch_size):
 def get_feat_mask(features, mask_rate):
     feat_node = features.shape[1]
     mask = torch.zeros(features.shape)
+    # sample : 랜덤으로 노드 선택
+    # mask : 선택된 노드 1로 설정
     samples = np.random.choice(feat_node, size=int(feat_node * mask_rate), replace=False)
     mask[:, samples] = 1
-    if torch.cuda.is_available():
-        mask = mask.cuda()
+    mask = mask.to(device)
     return mask, samples
 
 
@@ -61,7 +60,7 @@ def normalize_adj(adj, mode, sparse=False):
 
 
 def get_adj_from_edges(edges, weights, nnodes):
-    adj = torch.zeros(nnodes, nnodes).cuda()
+    adj = torch.zeros(nnodes, nnodes).to(device)
     adj[edges[0], edges[1]] = weights
     return adj
 
@@ -83,6 +82,7 @@ def augmentation(features_1, adj_1, features_2, adj_2, args, training):
     else:
         adj_2.edata['w'] = F.dropout(adj_2.edata['w'], p=args.dropedge_rate_2, training=training)
 
+    # shape은 original이랑 같지만, maskfeat_rate만큼 데이터를 없앰.
     return features_1, adj_1, features_2, adj_2
 
 
@@ -92,7 +92,7 @@ def generate_random_node_pairs(nnodes, nedges, backup=300):
     rand_edges = torch.from_numpy(rand_edges)
     rand_edges = rand_edges[:, rand_edges[0,:] != rand_edges[1,:]]
     rand_edges = rand_edges[:, 0: nedges]
-    return rand_edges.cuda()
+    return rand_edges.to(device)
 
 
 def eval_debug_mode(embedding, labels, train_mask, val_mask, test_mask):
