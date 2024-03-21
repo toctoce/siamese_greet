@@ -171,6 +171,6 @@ def accuracy_discriminator(edges, labels, weights_lp):
 
     same_label_mask = (src_labels == dst_labels).int()
 
-    score = 1 - torch.abs(same_label_mask - weights_lp)
+    score = 1 - torch.round(torch.abs(same_label_mask - weights_lp))
     accuracy = (score.sum() / edges.shape[1]).item() * 100
     return accuracy
