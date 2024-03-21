@@ -202,8 +202,8 @@ class Edge_Discriminator(nn.Module):
 
     def forward(self, features, edges):
         weights_lp, weights_hp = self.weight_forward(features, edges)
-        adj_lp, adj_hp = self.weight_to_adj(edges, weights_lp, weights_hp)
         weights_lp, weights_hp = torch.round(weights_lp), torch.round(weights_hp)
+        adj_lp, adj_hp = self.weight_to_adj(edges, weights_lp, weights_hp)
         return adj_lp, adj_hp, weights_lp, weights_hp
 
 
