@@ -11,8 +11,10 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import normalize
 
-EOS = 1e-10
 from main import device
+
+EOS = 1e-10
+
 
 def split_batch(init_list, batch_size):
     groups = zip(*(iter(init_list),) * batch_size)

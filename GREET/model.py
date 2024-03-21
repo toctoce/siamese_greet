@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import dgl.function as fn
 
 from utils import *
+from main import device
 
 EOS = 1e-10
 norm = EdgeWeightNorm(norm='both')
@@ -33,6 +34,10 @@ class GCL(nn.Module):
 
 
     def get_embedding(self, x, a1, a2, source='all'):
+        # x : features
+        # a1, a2 : adj
+
+        # emb shape : nnode * emb_dim(128)
         emb1 = self.encoder1(x, a1)
         emb2 = self.encoder2(x, a2)
         return torch.cat((emb1, emb2), dim=1)
@@ -51,6 +56,7 @@ class GCL(nn.Module):
         emb2 = self.encoder2(x2, a2)
         proj1 = self.proj_head1(emb1)
         proj2 = self.proj_head2(emb2)
+        # 학습하면 loss 리턴
         loss = self.batch_nce_loss(proj1, proj2)
         return loss
 
@@ -100,8 +106,9 @@ class GCL(nn.Module):
 
 
     def infonce(self, anchor, sample, pos_mask, neg_mask, tau):
-        pos_mask = pos_mask.cuda()
-        neg_mask = neg_mask.cuda()
+        # 중요! 테스트 시 여기 지우기
+        pos_mask = pos_mask.float().to(device)
+        neg_mask = neg_mask.float().to(device)
         sim = self.similarity(anchor, sample) / tau
         exp_sim = torch.exp(sim) * neg_mask
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
@@ -147,7 +154,7 @@ class Edge_Discriminator(nn.Module):
     def gumbel_sampling(self, edges_weights_raw):
         eps = (self.bias - (1 - self.bias)) * torch.rand(edges_weights_raw.size()) + (1 - self.bias)
         gate_inputs = torch.log(eps) - torch.log(1 - eps)
-        gate_inputs = gate_inputs.cuda()
+        gate_inputs = gate_inputs.to(device)
         gate_inputs = (gate_inputs + edges_weights_raw) / self.temperature
         return torch.sigmoid(gate_inputs).squeeze()
 
@@ -163,27 +170,29 @@ class Edge_Discriminator(nn.Module):
     def weight_to_adj(self, edges, weights_lp, weights_hp):
         if not self.sparse:
             adj_lp = get_adj_from_edges(edges, weights_lp, self.nnodes)
-            adj_lp += torch.eye(self.nnodes).cuda()
+            adj_lp += torch.eye(self.nnodes).to(device)
+            # 값이 전체적으로 작아짐.
             adj_lp = normalize_adj(adj_lp, 'sym', self.sparse)
 
             adj_hp = get_adj_from_edges(edges, weights_hp, self.nnodes)
-            adj_hp += torch.eye(self.nnodes).cuda()
+            adj_hp += torch.eye(self.nnodes).to(device)
+            # 값이 전체적으로 작아짐.
             adj_hp = normalize_adj(adj_hp, 'sym', self.sparse)
 
-            mask = torch.zeros(adj_lp.shape).cuda()
+            mask = torch.zeros(adj_lp.shape).to(device)
             mask[edges[0], edges[1]] = 1.
             mask.requires_grad = False
-            adj_hp = torch.eye(self.nnodes).cuda() - adj_hp * mask * self.alpha
+            adj_hp = torch.eye(self.nnodes).to(device) - adj_hp * mask * self.alpha
         else:
-            adj_lp = dgl.graph((edges[0], edges[1]), num_nodes=self.nnodes, device='cuda')
+            adj_lp = dgl.graph((edges[0], edges[1]), num_nodes=self.nnodes, device=device)
             adj_lp = dgl.add_self_loop(adj_lp)
-            weights_lp = torch.cat((weights_lp, torch.ones(self.nnodes).cuda())) + EOS
+            weights_lp = torch.cat((weights_lp, torch.ones(self.nnodes).to(device))) + EOS
             weights_lp = norm(adj_lp, weights_lp)
             adj_lp.edata['w'] = weights_lp
 
-            adj_hp = dgl.graph((edges[0], edges[1]), num_nodes=self.nnodes, device='cuda')
+            adj_hp = dgl.graph((edges[0], edges[1]), num_nodes=self.nnodes, device=device)
             adj_hp = dgl.add_self_loop(adj_hp)
-            weights_hp = torch.cat((weights_hp, torch.ones(self.nnodes).cuda())) + EOS
+            weights_hp = torch.cat((weights_hp, torch.ones(self.nnodes).to(device))) + EOS
             weights_hp = norm(adj_hp, weights_hp)
             weights_hp *= - self.alpha
             weights_hp[edges.shape[1]:] = 1
