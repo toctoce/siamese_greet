@@ -11,6 +11,12 @@ from utils import *
 
 EOS = 1e-10
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+else :
+    device = torch.device("cpu")
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -45,7 +51,7 @@ def train_discriminator(cl_model, discriminator, optimizer_disc, features, str_e
 
     adj_1, adj_2, weights_lp, weights_hp = discriminator(torch.cat((features, str_encodings), 1), edges)
     rand_np = generate_random_node_pairs(features.shape[0], edges.shape[1])
-    psu_label = torch.ones(edges.shape[1]).cuda()
+    psu_label = torch.ones(edges.shape[1]).to(device)
 
     embedding = cl_model.get_embedding(features, adj_1, adj_2)
     edge_emb_sim = F.cosine_similarity(embedding[edges[0]], embedding[edges[1]])
@@ -72,22 +78,23 @@ def main(args):
     setup_seed(0)
     features, edges, str_encodings, train_mask, val_mask, test_mask, labels, nnodes, nfeats = load_data(args.dataset)
     results = []
-
+    results_disc = []
     for trial in range(args.ntrials):
+        print(f'>>>>> trial : {trial + 1} <<<<<')
 
         setup_seed(trial)
 
         cl_model = GCL(nlayers=args.nlayers_enc, nlayers_proj=args.nlayers_proj, in_dim=nfeats, emb_dim=args.emb_dim,
-                    proj_dim=args.proj_dim, dropout=args.dropout, sparse=args.sparse, batch_size=args.cl_batch_size).cuda()
+                    proj_dim=args.proj_dim, dropout=args.dropout, sparse=args.sparse, batch_size=args.cl_batch_size).to(device)
         cl_model.set_mask_knn(features.cpu(), k=args.k, dataset=args.dataset)
-        discriminator = Edge_Discriminator(nnodes, nfeats + str_encodings.shape[1], args.alpha, args.sparse).cuda()
+        discriminator = Edge_Discriminator(nnodes, nfeats, args.alpha, args.sparse).to(device)
 
         optimizer_cl = torch.optim.Adam(cl_model.parameters(), lr=args.lr_gcl, weight_decay=args.w_decay)
         optimizer_discriminator = torch.optim.Adam(discriminator.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
 
-        features = features.cuda()
-        str_encodings = str_encodings.cuda()
-        edges = edges.cuda()
+        features = features.to(device)
+        str_encodings = str_encodings.to(device)
+        edges = edges.to(device)
 
         best_acc_val = 0
         best_acc_test = 0
@@ -103,23 +110,26 @@ def main(args):
             if epoch % args.eval_freq == 0:
                 cl_model.eval()
                 discriminator.eval()
-                adj_1, adj_2, _, _ = discriminator(torch.cat((features, str_encodings), 1), edges)
+                adj_1, adj_2, weights_lp, weights_hp = discriminator(torch.cat((features, str_encodings), 1), edges)
+                acc_disc = accuracy_discriminator(edges, labels, weights_lp)
                 embedding = cl_model.get_embedding(features, adj_1, adj_2)
                 cur_split = 0 if (train_mask.shape[1]==1) else (trial % train_mask.shape[1])
                 acc_test, acc_val = eval_test_mode(embedding, labels, train_mask[:, cur_split],
                                                  val_mask[:, cur_split], test_mask[:, cur_split])
                 print(
-                    '[TEST] Epoch:{:04d} | CL loss:{:.4f} | RANK loss:{:.4f} | VAL ACC:{:.2f} | TEST ACC:{:.2f}'.format(
-                        epoch, cl_loss, rank_loss, acc_val, acc_test))
+                    '[TEST] Epoch:{:04d} | CL loss:{:.4f} | RANK loss:{:.4f} | VAL ACC:{:.2f} | TEST ACC:{:.2f} | DISC ACC:{:.2f}'.format(
+                        epoch, cl_loss, rank_loss, acc_val, acc_test, acc_disc))
 
                 if acc_val > best_acc_val:
                     best_acc_val = acc_val
                     best_acc_test = acc_test
+                    best_acc_disc = acc_disc
 
         results.append(best_acc_test)
+        results_disc.append(best_acc_disc)
 
-    print('\n[FINAL RESULT] Dataset:{} | Run:{} | ACC:{:.2f}+-{:.2f}'.format(args.dataset, args.ntrials, np.mean(results),
-                                                                           np.std(results)))
+    print('\n[FINAL RESULT] Dataset:{} | Run:{} | ACC:{:.2f}+-{:.2f} | DISC ACC:{:.2f}+-{:.2f}'.format(args.dataset, args.ntrials, np.mean(results),
+                                                                           np.std(results), np.mean(results_disc), np.std(results_disc)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

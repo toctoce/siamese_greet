@@ -11,6 +11,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import normalize
 
+from main import device
+
 EOS = 1e-10
 
 
@@ -154,3 +156,19 @@ def eval_test_mode(embedding, labels, train_mask, val_mask, test_mask):
 
     return acc_test * 100, acc_val * 100
 
+def accuracy_discriminator(edges, labels, weights_lp):
+    edges = edges.to(device)
+    labels = labels.to(device)
+    weights_lp = weights_lp.to(device)
+
+    src_nodes = edges[0]
+    dst_nodes = edges[1]
+
+    src_labels = labels[src_nodes]
+    dst_labels = labels[dst_nodes]
+
+    same_label_mask = (src_labels == dst_labels).int()
+
+    score = 1 - torch.abs(same_label_mask - weights_lp)
+    accuracy = (score.sum() / edges.shape[1]).item() * 100
+    return accuracy
