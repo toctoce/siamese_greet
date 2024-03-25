@@ -9,6 +9,9 @@
 ### random_gcl
 gcl을 학습시키지 않음. (어떻게 되는지 확인용)
 
+### pexp5
+rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가
+
 ## 나은
 ### rexp2
 TEST에서 평균내지말고 4개 다 concat, rank loss 구할 때도
