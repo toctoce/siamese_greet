@@ -136,7 +136,7 @@ def main(args):
         optimizer_discriminator0 = torch.optim.Adam(discriminator0.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
         optimizer_discriminator1 = torch.optim.Adam(discriminator1.parameters(), lr=args.lr_disc, weight_decay=args.w_decay)
 
-        emb_layer = nn.Linear(args.emb_dim * 4, args.emb_dim)
+        emb_layer = nn.Linear(args.emb_dim * 4, args.emb_dim).to(device)
 
         features = features.to(device)
         str_encodings = str_encodings.to(device)
@@ -162,6 +162,7 @@ def main(args):
                 cl_model1.eval()
                 discriminator0.eval()
                 discriminator1.eval()
+                emb_layer.eval()
 
                 adj_10, adj_20, weights_lp0, weights_hp0 = discriminator0(features, edges)
                 adj_11, adj_21, weights_lp1, weights_hp1 = discriminator1(str_encodings, edges)
