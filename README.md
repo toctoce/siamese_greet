@@ -10,8 +10,10 @@
 gcl을 학습시키지 않음. (어떻게 되는지 확인용)
 
 ### pexp1
-rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가
-임베딩 레이어가 학습하진 않음
+rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가 - 한 개의 emb_layer 추가(emb_layer가 학습을 하진 않음)
+
+### pexp5
+rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가 - 각 discriminator에 emb_layer 추가
 
 ## 나은
 ### rexp2
