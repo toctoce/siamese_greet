@@ -9,7 +9,7 @@
 ### random_gcl
 gcl을 학습시키지 않음. (어떻게 되는지 확인용)
 
-### pexp5
+### pexp1
 rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가
 임베딩 레이어가 학습하진 않음
 
