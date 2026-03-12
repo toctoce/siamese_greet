@@ -51,7 +51,7 @@ DDCL은 다음 두 가지 핵심 모듈로 구성됩니다.
 
 ---
 
-**2. 4-채널 표현 학습 모듈 (Four-channel Representation Learning)***
+**2. 4-채널 표현 학습 모듈 (Four-channel Representation Learning)**
 
 생성된 인접 행렬을 이용하여 **4개의 그래프 표현을 학습합니다.**
 
