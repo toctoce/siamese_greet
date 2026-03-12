@@ -1,20 +1,98 @@
-# GREET 모델의 성능 높이기
-### GREET폴더
-원래 코드에 discriminator 정확도를 계산하는 함수만 추가되어있음.
+# 간선 판별 분리를 이용한 그래프 대조 학습 (DDCL)
 
-## 영규
-### idea11
-예측한 weight를 반올림하는 방법
+DDCL은 기존 GREET 모델을 확장하여 **노드 특징 정보와 그래프 구조 정보를 분리하여 간선 판별을 수행하는 구조**를 제안합니다.  
+이를 통해 **그래프 표현 학습 성능을 향상**시키는 것을 목표로 합니다.
 
-### random_gcl
-gcl을 학습시키지 않음. (어떻게 되는지 확인용)
+---
 
-### pexp1
-rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가 - 한 개의 emb_layer 추가(emb_layer가 학습을 하진 않음)
+# 연구 배경
 
-### pexp5
-rexp2에서 concat한 embedding들의 차원을 줄이는 과정 하나 추가 - 각 discriminator에 emb_layer 추가
+그래프는 다양한 실세계 데이터를 표현하는 데 사용되는 중요한 자료 구조입니다.  
+최근 **Graph Neural Network (GNN)** 기반의 그래프 표현 학습 연구가 활발히 진행되고 있으며,  
+특히 **레이블이 없는 환경에서 그래프 표현을 학습하는 비지도 학습 방법**이 주목받고 있습니다.
 
-## 나은
-### rexp2
-TEST에서 평균내지말고 4개 다 concat, rank loss 구할 때도
+기존 모델인 **GREET**는 간선의 **동질성(homophily)** 과 **이질성(heterophily)** 을 구분하여 그래프 표현을 학습합니다.  
+하지만 GREET는 동질성과 이질성을 **노드 특징 정보와 그래프 구조 정보의 관점을 분리하여 간선 판별을 수행**합니다.
+
+데이터셋에 따라 두 정보의 중요도가 다르다는 점을 고려하여,  
+본 연구에서는 **두 정보를 분리하여 학습하는 DDCL 모델**을 제안합니다.
+
+---
+
+# 제안 방법 (DDCL)
+
+DDCL은 다음 두 가지 핵심 모듈로 구성됩니다.
+
+## 1. 이중 간선 판별 모듈 (Dual Edge Discriminator)
+
+두 개의 간선 판별기를 사용합니다.
+
+- **Discf** : 노드 특징 정보 기반 간선 판별
+- **Discs** : 그래프 구조 정보 기반 간선 판별
+
+각 판별기는 다음 두 종류의 인접 행렬을 생성합니다.
+
+- 동질적 간선 인접행렬 (Homophilous adjacency matrix)
+- 이질적 간선 인접행렬 (Heterophilous adjacency matrix)
+
+이 과정에서 **Pivot-Anchored Ranking Loss**를 사용하여 학습합니다.
+
+학습 목표
+
+- 동질적 간선으로 연결된 노드 → 높은 유사도
+- 이질적 간선으로 연결된 노드 → 낮은 유사도
+
+---
+
+## 2. 4-채널 표현 학습 모듈 (Four-channel Representation Learning)
+
+생성된 인접 행렬을 이용하여 **4개의 그래프 표현을 학습합니다.**
+
+- Feature 기반 Homophily 표현
+- Feature 기반 Heterophily 표현
+- Structure 기반 Homophily 표현
+- Structure 기반 Heterophily 표현
+
+각 표현은 **SGC (Simplifying Graph Convolution)** 인코더를 통해 학습되고, 이어붙여 최종 표현을 구성합니다.
+
+# 실험 설정
+
+## 데이터셋
+
+실험은 다음 6개의 그래프 데이터셋에서 수행되었습니다.
+
+| Dataset | 특성 |
+|---|---|
+| Cora | 동질적 그래프 |
+| CiteSeer | 동질적 그래프 |
+| Chameleon | 이질적 그래프 |
+| Cornell | 이질적 그래프 |
+| Texas | 이질적 그래프 |
+| Wisconsin | 이질적 그래프 |
+
+그래프 표현 학습 성능 평가는 **노드 분류 정확도(Node Classification Accuracy)** 로 측정되었습니다.
+
+---
+
+# 실험 결과
+
+DDCL은 기존 GREET 모델보다 **6개 데이터셋 중 5개 데이터셋에서 성능이 향상**되었습니다.
+
+특히 **이질적 그래프 데이터셋에서 더 큰 성능 향상**을 보였습니다.
+
+| Model | Cora | CiteSeer | Chameleon | Cornell | Texas | Wisconsin |
+|---|---|---|---|---|---|---|
+| GREET | 83.34 | 72.68 | 63.25 | 72.16 | 86.76 | 83.73 |
+| **DDCL** | **83.71** | **73.00** | **66.38** | **74.32** | 84.86 | **86.08** |
+
+---
+
+# 주요 기여 (Contributions)
+
+- 그래프 대조 학습을 위한 **Decoupled Edge Discrimination 구조 제안**
+- **노드 특징 정보와 그래프 구조 정보를 분리한 간선 판별 방식**
+- **Dual Edge Discriminator 구조 설계**
+- **4-채널 그래프 표현 학습 구조 제안**
+- 이질적 그래프 데이터셋에서 **그래프 표현 학습 성능 향상**
+
+---
